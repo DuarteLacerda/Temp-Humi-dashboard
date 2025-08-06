@@ -2,13 +2,14 @@
 #include <HTTPClient.h>
 #include <Wire.h>
 #include <Adafruit_SHT31.h>
+#include <ArduinoOTA.h>
 
 // WiFi
 const char* ssid = "Your_SSID";  // replace with your WiFi SSID
 const char* password = "Your_PASSWORD";  // replace with your WiFi password
 
 // API
-const char* serverName = "https://your-api-endpoint.com";  // use http, not https, if local network
+const char* serverName = "http://your-api-endpoint.com";  // use http, not https if local
 
 // Sensor
 #define SDA_PIN 21
@@ -35,11 +36,26 @@ void sendToServer(const String& nome, const String& valor) {
 bool readTemperatureHumidity(float& temp, float& hum) {
   temp = sht.readTemperature();
   hum = sht.readHumidity();
+  return (!isnan(temp) && !isnan(hum));
+}
 
-  if (!isnan(temp) && !isnan(hum)) {
-    return true;
-  }
-  return false;
+void setupOTA() {
+  ArduinoOTA
+    .onStart([]() {
+      Serial.println("Enabling OTA...");
+    })
+    .onEnd([]() {
+      Serial.println("\nOTA Update Complete");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("OTA Error [%u]\n", error);
+    });
+
+  ArduinoOTA.begin();
+  Serial.println("OTA ready");
 }
 
 void setup() {
@@ -47,30 +63,33 @@ void setup() {
   delay(1000);
 
   Wire.begin(SDA_PIN, SCL_PIN);
-
-  if (!sht.begin(0x44)) {  // 0x44 é o endereço I2C padrão do SHT31
-    Serial.println("Erro ao iniciar o SHT31!");
+  if (!sht.begin(0x44)) {
+    Serial.println("Error initializing SHT31!");
   } else {
-    Serial.println("Sensor SHT31 inicializado com sucesso.");
+    Serial.println("HT31 sensor initialized successfully.");
   }
 
   WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi");
+  Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.print(".");
   }
-  Serial.println("\nConnected to WiFi!");
+  Serial.println("\nConnected to Wi-Fi!");
   Serial.println(WiFi.localIP());
+
+  setupOTA();  // Initialize OTA
 }
 
 void loop() {
+  ArduinoOTA.handle();  // Keep OTA active
+
   if (readTemperatureHumidity(temperature, humidity)) {
     Serial.printf("Temp: %.2f ºC | Hum: %.2f %%\n", temperature, humidity);
     sendToServer("temperatura", String(temperature, 2));
     sendToServer("humidade", String(humidity, 2));
   } else {
-    Serial.println("Error reading SHT31 sensor.");
+    Serial.println("Read error on the sensor SHT31.");
   }
 
   delay(3000);
