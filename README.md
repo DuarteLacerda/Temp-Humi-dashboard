@@ -1,4 +1,4 @@
-# 🌡️ Temperature & Humidity Dashboard – Duarte Lacerda
+# 🌡️ Temperature & Humidity Dashboard
 
 This project is a web-based dashboard that collects, stores, and displays **temperature** and **humidity** data in real-time using an **ESP32** as a sensor and a **Raspberry Pi 5** as the web server.
 
